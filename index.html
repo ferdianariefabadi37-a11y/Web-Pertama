@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HSE Performance Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f3f6fa;
+      --panel: #fff;
+      --text: #18304f;
+      --muted: #74849a;
+      --line: #e3e9f1;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --orange: #d97706;
+      --navy: #0f1e36;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    body.dark {
+      --bg: #091426;
+      --panel: #102038;
+      --text: #f1f5f9;
+      --muted: #9aabc1;
+      --line: #263b5a;
+      --navy: #08101f;
+    }
+    header {
+      height: 74px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: var(--navy); color: #66dfbd;
+      font-weight: 800;
+    }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .subtitle { color: var(--muted); font-size: 12px; }
+    .actions { display: flex; gap: 8px; }
+    button, select, input {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+    }
+    button { cursor: pointer; }
+    button.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+    main { max-width: 1280px; margin: auto; padding: 22px 28px 40px; }
+    .toolbar, .table-tools {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px;
+    }
+    #yearSelect { width: 92px; }
+    .toolbar {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 12px; padding: 12px 16px; margin-bottom: 16px;
+    }
+    .status { color: var(--green); font-size: 12px; font-weight: 700; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .card, .chart-card, .table-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .card { padding: 16px; min-height: 128px; }
+    .label {
+      color: var(--muted); font-size: 11px;
+      text-transform: uppercase; font-weight: 700;
+    }
+    .value { margin-top: 14px; font-size: 27px; font-weight: 800; }
+    .card.green .value { color: var(--green); }
+    .card.orange .value { color: var(--orange); }
+    .small { margin-top: 8px; color: var(--muted); font-size: 11px; }
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .chart-card { padding: 16px; }
+    .chart-head {
+      display: flex; justify-content: space-between;
+      align-items: flex-start; margin-bottom: 12px;
+    }
+    .chart-head h2 { margin: 0 0 5px; font-size: 14px; }
+    .chart-head p { margin: 0; color: var(--muted); font-size: 11px; }
+    .chart-wrap { height: 280px; }
+    .table-card { overflow: hidden; }
+    .table-head {
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .table-head h2 { margin: 0 0 4px; font-size: 14px; }
+    .table-tools input { width: 180px; }
+    .small-button {
+      padding: 6px 8px;
+      margin: 0 2px;
+      font-size: 11px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(9, 20, 38, .55);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal.open { display: flex; }
+    .form-card {
+      width: min(680px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .form-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .form-head h2 { margin: 0; font-size: 17px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .form-grid label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .form-grid input,
+    .form-grid select { width: 100%; }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .table-wrap { overflow: auto; max-height: 390px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      position: sticky; top: 0; z-index: 1;
+      background: var(--bg); color: var(--muted);
+      text-align: right; padding: 10px 12px;
+      text-transform: uppercase; font-size: 10px;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    td { border-top: 1px solid var(--line); padding: 11px 12px; text-align: right; }
+    tr:hover td { background: rgba(16, 185, 129, 0.05); }
+    .pill {
+      display: inline-block; padding: 4px 7px; border-radius: 999px;
+      background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 700;
+    }
+    @media (max-width: 900px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .charts { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      header { height: auto; padding: 14px; align-items: flex-start; }
+      .subtitle { display: none; }
+      main { padding: 14px; }
+      .kpis { grid-template-columns: 1fr; }
+      .toolbar, .table-head { align-items: flex-start; flex-direction: column; }
+      .table-tools { width: 100%; flex-wrap: wrap; }
+      .table-tools input { width: 100%; }
+      .form-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">EKU</div>
+      <div>
+        <h1>HSE Performance Dashboard</h1>
+        <div class="subtitle">PT Elit Kharisma Utama - <span id="headerYear">2026</span></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="themeBtn" title="Ganti tema">Tema</button>
+      <button id="addBtn" class="primary">Tambah Data</button>
+      <button class="primary" id="exportBtn">Ekspor CSV</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div>
+        <b>Periode:</b>
+        <select id="yearSelect" title="Pilih tahun"></select>
+        <span id="periodText">Januari - Desember 2026</span>
+      </div>
+      <div class="status">Target: ZERO FATALITY &amp; LTI</div>
+    </div>
+
+    <section class="kpis">
+      <div class="card green">
+        <div class="label">Man Hours Aman</div>
+        <div class="value" id="safeMh">1,828,673</div>
+        <div class="small">Akumulasi jam kerja aman</div>
+      </div>
+      <div class="card">
+        <div class="label">Man Power</div>
+        <div class="value" id="manPower">123</div>
+        <div class="small">Rata-rata personel aktif</div>
+      </div>
+      <div class="card green">
+        <div class="label">Leading Indicators</div>
+        <div class="value" id="leading">572</div>
+        <div class="small">Induksi, inspeksi, rapat & talk</div>
+      </div>
+      <div class="card orange">
+        <div class="label">Lagging Events</div>
+        <div class="value" id="lagging">8</div>
+        <div class="small">5 property damage + 3 near miss</div>
+      </div>
+      <div class="card">
+        <div class="label">Incident Rate</div>
+        <div class="value" id="incidentRate">0.00554</div>
+        <div class="small">Insiden per man hours</div>
+      </div>
+    </section>
+
+    <section class="charts">
+      <div class="chart-card">
+        <div class="chart-head">
+          <div><h2>Leading vs Lagging</h2><p>Kegiatan pencegahan dan kejadian bulanan</p></div>
+        </div>
+        <div class="chart-wrap"><canvas id="leadingChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-head">
+          <div><h2>Man Power & Man Hours</h2><p>Perkembangan personel dan jam kerja aman</p></div>
+        </div>
+        <div class="chart-wrap"><canvas id="progressChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-head">
+        <div>
+          <h2>Data Mingguan</h2>
+          <div class="small" id="recordCount">50 baris telemetry</div>
+        </div>
+        <div class="table-tools">
+          <input id="searchInput" type="search" placeholder="Cari minggu / bulan">
+          <select id="monthFilter">
+            <option value="ALL">Semua bulan</option>
+            <option>JANUARI</option><option>FEBRUARI</option><option>MARET</option>
+            <option>APRIL</option><option>MEI</option><option>JUNI</option>
+            <option>JULI</option><option>AGUSTUS</option><option>SEPTEMBER</option>
+            <option>OKTOBER</option><option>NOVEMBER</option><option>DESEMBER</option>
+          </select>
+          <button id="resetBtn" title="Kembalikan data contoh">Reset Data</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Bulan / Minggu</th><th>MP</th><th>Man Hours</th>
+              <th>Fatality</th><th>LTI</th><th>PD</th><th>NM</th>
+              <th>Induksi</th><th>Inspeksi</th><th>Status</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="dataModal">
+    <form class="form-card" id="dataForm">
+      <div class="form-head">
+        <h2 id="formTitle">Tambah Data Mingguan</h2>
+        <button type="button" id="closeBtn">Tutup</button>
+      </div>
+      <input type="hidden" id="editId">
+      <div class="form-grid">
+        <label>Bulan
+          <select id="formMonth" required>
+            <option>JANUARI</option><option>FEBRUARI</option><option>MARET</option>
+            <option>APRIL</option><option>MEI</option><option>JUNI</option>
+            <option>JULI</option><option>AGUSTUS</option><option>SEPTEMBER</option>
+            <option>OKTOBER</option><option>NOVEMBER</option><option>DESEMBER</option>
+          </select>
+        </label>
+        <label>Minggu<input id="formWeek" type="text" value="W1" required></label>
+        <label>Man Power<input id="formMp" type="number" min="0" value="0" required></label>
+        <label>Man Hours<input id="formMh" type="number" min="0" step="0.1" value="0" required></label>
+        <label>Fatality<input id="formFat" type="number" min="0" value="0" required></label>
+        <label>LTI<input id="formLti" type="number" min="0" value="0" required></label>
+        <label>Property Damage<input id="formPd" type="number" min="0" value="0" required></label>
+        <label>Near Miss<input id="formNm" type="number" min="0" value="0" required></label>
+        <label>Induksi<input id="formInd" type="number" min="0" value="0" required></label>
+        <label>Inspeksi<input id="formIns" type="number" min="0" value="0" required></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="cancelBtn">Batal</button>
+        <button type="submit" class="primary">Simpan Data</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const months = ["JANUARI","FEBRUARI","MARET","APRIL","MEI","JUNI","JULI","AGUSTUS","SEPTEMBER","OKTOBER","NOVEMBER","DESEMBER"];
+    const short = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    const monthly = [
+      { mp: 118, mh: 34500, leading: 31, lagging: 1, safe: 1480000 },
+      { mp: 133, mh: 36250, leading: 48, lagging: 0, safe: 1516250 },
+      { mp: 133, mh: 36140, leading: 52, lagging: 1, safe: 1552390 },
+      { mp: 128, mh: 35520, leading: 47, lagging: 1, safe: 1587910 },
+      { mp: 125, mh: 35080, leading: 58, lagging: 0, safe: 1622990 },
+      { mp: 121, mh: 34490, leading: 50, lagging: 1, safe: 1657480 },
+      { mp: 119, mh: 33170, leading: 54, lagging: 1, safe: 1690650 },
+      { mp: 117, mh: 32240, leading: 49, lagging: 1, safe: 1722890 },
+      { mp: 116, mh: 31540, leading: 62, lagging: 1, safe: 1754430 },
+      { mp: 115, mh: 30120, leading: 46, lagging: 1, safe: 1784550 },
+      { mp: 116, mh: 21546, leading: 75, lagging: 0, safe: 1828673 },
+      { mp: 0, mh: 0, leading: 0, lagging: 0, safe: 1828673 }
+    ];
+
+    const currentYear = new Date().getFullYear();
+    let selectedYear = Number(localStorage.getItem("hseDashboardSelectedYear")) || currentYear;
+
+    function createDefaultRows(year) {
+      const defaultRows = [];
+      let id = 1;
+      let rowCount = 0;
+      months.forEach((month, mi) => {
+        const weekCount = mi === 11 ? 6 : 4;
+        for (let w = 1; w <= weekCount; w++) {
+          if (rowCount >= 50) break;
+          const active = monthly[mi].mp > 0;
+          defaultRows.push({
+            id: id++,
+            year,
+            month,
+            week: `W${w}`,
+            mp: active ? monthly[mi].mp : 0,
+            mh: active ? Number((monthly[mi].mh / weekCount).toFixed(1)) : 0,
+            fat: 0,
+            lti: 0,
+            pd: active && rowCount % 17 === 0 ? 1 : 0,
+            nm: active && rowCount % 19 === 0 ? 1 : 0,
+            ind: active ? Math.ceil(monthly[mi].leading / weekCount) : 0,
+            ins: active ? (w % 3 === 0 ? 3 : 2) : 0
+          });
+          rowCount++;
+        }
+      });
+      return defaultRows;
+    }
+
+    let rows = [];
+
+    function getStorageKey(year) {
+      return `hseDashboardRows${year}`;
+    }
+
+    function loadYear(year) {
+      selectedYear = Number(year);
+      localStorage.setItem("hseDashboardSelectedYear", String(selectedYear));
+
+      const savedRows = localStorage.getItem(getStorageKey(selectedYear));
+      if (savedRows) {
+        try {
+          rows = JSON.parse(savedRows).map(row => ({ ...row, year: selectedYear }));
+        } catch (error) {
+          rows = createDefaultRows(selectedYear);
+        }
+      } else if (selectedYear === 2026) {
+        rows = createDefaultRows(2026);
+      } else {
+        rows = createZeroRows(selectedYear);
+      }
+
+      document.title = `HSE Performance Dashboard ${selectedYear}`;
+      document.getElementById("headerYear").textContent = selectedYear;
+      document.getElementById("periodText").textContent =
+        `Januari - Desember ${selectedYear}`;
+      document.getElementById("yearSelect").value = String(selectedYear);
+
+      renderTable();
+      updateDashboard();
+    }
+
+    function createZeroRows(year) {
+      const zeroRows = [];
+      let id = 1;
+      months.forEach(month => {
+        for (let w = 1; w <= 4; w++) {
+          zeroRows.push({
+            id: id++, year, month, week: `W${w}`,
+            mp: 0, mh: 0, fat: 0, lti: 0, pd: 0, nm: 0, ind: 0, ins: 0
+          });
+        }
+      });
+      return zeroRows;
+    }
+
+    function number(value) {
+      return new Intl.NumberFormat("id-ID").format(value);
+    }
+
+    function renderTable() {
+      const month = document.getElementById("monthFilter").value;
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = rows.filter(r =>
+        (month === "ALL" || r.month === month) &&
+        `${r.month} ${r.week}`.toLowerCase().includes(search)
+      );
+      document.getElementById("recordCount").textContent = `${filtered.length} baris telemetry`;
+      document.getElementById("tableBody").innerHTML = filtered.map(r => `
+        <tr>
+          <td><b>${r.month}</b> / ${r.week}</td>
+          <td>${r.mp}</td><td>${number(r.mh)}</td>
+          <td>${r.fat}</td><td>${r.lti}</td><td>${r.pd}</td><td>${r.nm}</td>
+          <td>${r.ind}</td><td>${r.ins}</td>
+          <td><span class="pill">${r.mp ? "ACTIVE" : "STANDBY"}</span></td>
+          <td>
+            <button class="small-button" onclick="openEditForm(${r.id})">Edit</button>
+            <button class="small-button" onclick="deleteRow(${r.id})">Hapus</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function saveRows() {
+      localStorage.setItem(getStorageKey(selectedYear), JSON.stringify(rows));
+      updateDashboard();
+    }
+
+    function updateDashboard() {
+      const activeRows = rows.filter(r => r.mp > 0);
+      const totalMh = rows.reduce((sum, r) => sum + Number(r.mh || 0), 0);
+      const averageMp = activeRows.length
+        ? activeRows.reduce((sum, r) => sum + Number(r.mp || 0), 0) / activeRows.length
+        : 0;
+      const totalLeading = rows.reduce((sum, r) =>
+        sum + Number(r.ind || 0) + Number(r.ins || 0), 0);
+      const totalLagging = rows.reduce((sum, r) =>
+        sum + Number(r.fat || 0) + Number(r.lti || 0) +
+        Number(r.pd || 0) + Number(r.nm || 0), 0);
+      const incidentRate = totalMh > 0 ? totalLagging / totalMh : 0;
+
+      document.getElementById("safeMh").textContent = number(totalMh);
+      document.getElementById("manPower").textContent = averageMp.toFixed(1);
+      document.getElementById("leading").textContent = number(totalLeading);
+      document.getElementById("lagging").textContent = number(totalLagging);
+      document.getElementById("incidentRate").textContent = incidentRate.toFixed(6);
+
+      if (window.leadingChart) {
+        const leadingByMonth = monthly.map(() => 0);
+        const laggingByMonth = monthly.map(() => 0);
+        const mpByMonth = monthly.map(() => 0);
+        const mhByMonth = monthly.map(() => 0);
+
+        rows.forEach(r => {
+          const index = months.indexOf(r.month);
+          if (index >= 0) {
+            leadingByMonth[index] += Number(r.ind || 0) + Number(r.ins || 0);
+            laggingByMonth[index] += Number(r.pd || 0) + Number(r.nm || 0);
+            mpByMonth[index] = Number(r.mp || 0);
+            mhByMonth[index] += Number(r.mh || 0);
+          }
+        });
+
+        window.leadingChart.data.datasets[0].data = leadingByMonth;
+        window.leadingChart.data.datasets[1].data = laggingByMonth;
+        window.leadingChart.update();
+
+        window.progressChart.data.datasets[0].data = mpByMonth;
+        window.progressChart.data.datasets[1].data = mhByMonth;
+        window.progressChart.update();
+      }
+    }
+
+    function openAddForm() {
+      document.getElementById("dataForm").reset();
+      document.getElementById("editId").value = "";
+      document.getElementById("formTitle").textContent = "Tambah Data Mingguan";
+      document.getElementById("formMonth").value = "JANUARI";
+      document.getElementById("formWeek").value = "W1";
+      document.getElementById("dataModal").classList.add("open");
+    }
+
+    function openEditForm(id) {
+      const row = rows.find(r => r.id === id);
+      if (!row) return;
+      document.getElementById("editId").value = row.id;
+      document.getElementById("formTitle").textContent = "Edit Data Mingguan";
+      document.getElementById("formMonth").value = row.month;
+      document.getElementById("formWeek").value = row.week;
+      document.getElementById("formMp").value = row.mp;
+      document.getElementById("formMh").value = row.mh;
+      document.getElementById("formFat").value = row.fat;
+      document.getElementById("formLti").value = row.lti;
+      document.getElementById("formPd").value = row.pd;
+      document.getElementById("formNm").value = row.nm;
+      document.getElementById("formInd").value = row.ind;
+      document.getElementById("formIns").value = row.ins;
+      document.getElementById("dataModal").classList.add("open");
+    }
+
+    function closeForm() {
+      document.getElementById("dataModal").classList.remove("open");
+    }
+
+    function deleteRow(id) {
+      if (!confirm("Hapus data mingguan ini?")) return;
+      rows = rows.filter(r => r.id !== id);
+      saveRows();
+      renderTable();
+    }
+
+    function resetData() {
+      if (!confirm("Kembalikan semua data ke data contoh?")) return;
+      rows = selectedYear === 2026
+        ? createDefaultRows(2026)
+        : createZeroRows(selectedYear);
+      saveRows();
+      renderTable();
+    }
+
+    function chartText() {
+      return document.body.classList.contains("dark") ? "#a6b5c7" : "#64748b";
+    }
+
+    function makeCharts() {
+      const text = chartText();
+      const grid = document.body.classList.contains("dark") ? "rgba(255,255,255,.08)" : "rgba(15,30,54,.08)";
+      Chart.defaults.font.family = "Arial";
+      window.leadingChart = new Chart(document.getElementById("leadingChart"), {
+        type: "bar",
+        data: {
+          labels: short,
+          datasets: [
+            { label: "Leading", data: monthly.map(m => m.leading), backgroundColor: "#10b981", borderRadius: 5 },
+            { label: "Lagging", data: monthly.map(m => m.lagging), backgroundColor: "#d97706", borderRadius: 5 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: text } } },
+          scales: {
+            x: { ticks: { color: text }, grid: { display: false } },
+            y: { ticks: { color: text }, grid: { color: grid } }
+          }
+        }
+      });
+      window.progressChart = new Chart(document.getElementById("progressChart"), {
+        type: "line",
+        data: {
+          labels: short,
+          datasets: [
+            { label: "Man Power", data: monthly.map(m => m.mp), borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,.12)", fill: true, tension: .3 },
+            { label: "Safe Man Hours", data: monthly.map(m => m.safe), borderColor: "#10b981", borderDash: [5,5], yAxisID: "mh", tension: .3 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: text } } },
+          scales: {
+            x: { ticks: { color: text }, grid: { display: false } },
+            y: { ticks: { color: text }, grid: { color: grid } },
+            mh: { position: "right", ticks: { color: text }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    document.getElementById("monthFilter").addEventListener("change", renderTable);
+    document.getElementById("searchInput").addEventListener("input", renderTable);
+    document.getElementById("addBtn").addEventListener("click", openAddForm);
+    document.getElementById("closeBtn").addEventListener("click", closeForm);
+    document.getElementById("cancelBtn").addEventListener("click", closeForm);
+    document.getElementById("resetBtn").addEventListener("click", resetData);
+    document.getElementById("dataModal").addEventListener("click", event => {
+      if (event.target.id === "dataModal") closeForm();
+    });
+    document.getElementById("dataForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const idValue = document.getElementById("editId").value;
+      const row = {
+        id: idValue ? Number(idValue) : (rows.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0) + 1),
+        year: selectedYear,
+        month: document.getElementById("formMonth").value,
+        week: document.getElementById("formWeek").value.trim(),
+        mp: Number(document.getElementById("formMp").value),
+        mh: Number(document.getElementById("formMh").value),
+        fat: Number(document.getElementById("formFat").value),
+        lti: Number(document.getElementById("formLti").value),
+        pd: Number(document.getElementById("formPd").value),
+        nm: Number(document.getElementById("formNm").value),
+        ind: Number(document.getElementById("formInd").value),
+        ins: Number(document.getElementById("formIns").value)
+      };
+
+      if (idValue) {
+        const index = rows.findIndex(r => r.id === Number(idValue));
+        if (index >= 0) rows[index] = row;
+      } else {
+        rows.push(row);
+      }
+      saveRows();
+      renderTable();
+      closeForm();
+    });
+    document.getElementById("themeBtn").addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      if (window.leadingChart) {
+        const text = chartText();
+        [window.leadingChart, window.progressChart].forEach(chart => {
+          chart.options.plugins.legend.labels.color = text;
+          chart.options.scales.x.ticks.color = text;
+          chart.options.scales.y.ticks.color = text;
+          chart.update();
+        });
+      }
+    });
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      const header = ["Tahun","Bulan","Minggu","MP","Man Hours","Fatality","LTI","PD","NM","Induksi","Inspeksi"];
+      const lines = [header.join(","), ...rows.map(r =>
+        [selectedYear,r.month,r.week,r.mp,r.mh,r.fat,r.lti,r.pd,r.nm,r.ind,r.ins].join(",")
+      )];
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `hse-dashboard-${selectedYear}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    const yearSelect = document.getElementById("yearSelect");
+    const yearStart = Math.min(currentYear - 5, selectedYear - 5);
+    const yearEnd = Math.max(currentYear + 5, selectedYear + 5);
+    for (let year = yearStart; year <= yearEnd; year++) {
+      const option = document.createElement("option");
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.appendChild(option);
+    }
+    yearSelect.value = String(selectedYear);
+    yearSelect.addEventListener("change", event => loadYear(event.target.value));
+
+    makeCharts();
+    loadYear(selectedYear);
+  </script>
+</body>
+</html>
